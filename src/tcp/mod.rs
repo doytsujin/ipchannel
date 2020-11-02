@@ -4,9 +4,8 @@ pub type Receiver<T> = crate::generic::Receiver<std::net::TcpStream, T>;
 pub type Sender<T> = crate::generic::Sender<std::net::TcpStream, T>;
 
 fn split_stream<S, R>(stream: net::TcpStream) -> io::Result<(Sender<S>, Receiver<R>)> {
-    // FIXME: configure buf size
-    let sender = Sender::new(stream.try_clone()?, 4096);
-    let receiver = Receiver::new(stream, 4096);
+    let sender = Sender::new(stream.try_clone()?);
+    let receiver = Receiver::new(stream);
     Ok((sender, receiver))
 }
 

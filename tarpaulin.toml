@@ -1,5 +1,7 @@
 [default]
 ignore-tests = true
+ignored = true
+exclude-files = ["src/main.rs"]
 
 [report]
 out = ["Html"]

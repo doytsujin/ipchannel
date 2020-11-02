@@ -1,18 +1,14 @@
 use super::*;
 use crate::Sender as _;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use std::{convert::TryInto as _, fmt::Debug, io};
+use std::{fmt::Debug, io};
 use test_case::test_case;
 
 fn check_buf<T>(buf: &[u8], target: T)
 where
     T: DeserializeOwned + PartialEq + Debug,
 {
-    assert_eq!(
-        (buf.len() - 8) as u64,
-        u64::from_le_bytes(buf[..8].try_into().unwrap()),
-    );
-    assert_eq!(bincode::deserialize::<T>(&buf[8..]).unwrap(), target);
+    assert_eq!(bincode::deserialize::<T>(buf).unwrap(), target);
 }
 
 fn check_send<T>(target: T)
@@ -20,7 +16,7 @@ where
     T: Serialize + DeserializeOwned + Clone + PartialEq + Debug,
 {
     let mut buf = Vec::new();
-    let mut sender = Sender::new(&mut buf, 16);
+    let mut sender = Sender::new(&mut buf);
     sender.send(target.clone()).unwrap();
     check_buf(&buf, target);
 }
@@ -49,18 +45,6 @@ fn test_send_struct() {
         tuple_field: (13, 37),
     };
     check_send(payload)
-}
-
-#[test]
-fn test_buf_size() {
-    let mut buf = Vec::new();
-    let mut sender = Sender::new(&mut buf, 16);
-    let payload = "a very long string, totally longer than 16 bytes, I promise".to_string();
-
-    assert_eq!(sender.buf.capacity(), 16);
-    sender.send(payload.clone()).unwrap();
-    assert_eq!(sender.buf.capacity(), 16);
-    check_buf(&buf, payload);
 }
 
 #[test_case(true, io::ErrorKind::NotFound; "write: not found")]
@@ -116,12 +100,11 @@ fn test_failed_write(error_in_write: bool, kind: io::ErrorKind) {
         }
     }
 
-    let mut sender = Sender::new(BadWriter(error_in_write, kind), 16);
+    let mut sender = Sender::new(BadWriter(error_in_write, kind));
     let err = *sender.send("foobar foobar foobar foobar").unwrap_err();
     if let bincode::ErrorKind::Io(err) = err {
         assert_eq!(err.kind(), kind);
     } else {
         panic!("Sender returned non-io error: {}", err);
     }
-    assert_eq!(sender.buf.capacity(), 16);
 }
